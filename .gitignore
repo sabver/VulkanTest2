@@ -35,4 +35,10 @@
 
 x64/*
 
-./VulkanTest2/x64/*
+VulkanTest2/x64/*
+VulkanTest2/resource.h
+VulkanTest2/VulkanTest2.aps
+VulkanTest2/VulkanTest2.rc
+VulkanTest2/VulkanTest2.vcxproj
+VulkanTest2/VulkanTest2.vcxproj.filters
+VulkanTest2/VulkanTest2.vcxproj.user

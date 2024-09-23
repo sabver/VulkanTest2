@@ -72,6 +72,9 @@ private:
 	VkDebugUtilsMessengerEXT debugMessenger;
 
 	VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
+	VkDevice device;
+
+	VkQueue graphicsQueue;
 
 	void initWindow() {
 		glfwInit();
@@ -86,6 +89,7 @@ private:
 		createInstance();
 		setupDebugMessenger();
 		pickPhysicalDevice();
+		createlogicalDevice();
 	}
 
 	void mainLoop() {
@@ -163,6 +167,12 @@ private:
 		}
 	}
 
+	/**
+	* Physical Device
+	* Definition: A physical device represents the actual hardware in the system, such as a GPU (Graphics Processing Unit).
+	* Role: It provides an abstraction of the hardware capabilities, allowing applications to query and utilize these capabilities. The physical device includes detailed information about the hardware, such as supported features, performance metrics, and limitations.
+	* Example: During Vulkan initialization, you first enumerate all physical devices in the system and then select one or more to use.
+	 **/
 	void pickPhysicalDevice() {
 		uint32_t deviceCount = 0;
 		vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
@@ -187,6 +197,52 @@ private:
 
 	}
 
+	/*
+	* Logical Device
+	* Definition: A logical device is an abstract instance of a physical device, providing an interface to interact with the physical device.
+	* Role: It allows applications to submit commands and manage resources without directly dealing with the physical hardware. The logical device includes queues that are used to perform different types of operations (e.g., graphics, compute, and transfer).
+	* Example: When creating a logical device, you specify the queue families and queues to use, enabled extensions, and other features. The logical device is created using the vkCreateDevice function.
+	*/
+	void createlogicalDevice() {
+		QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
+
+		VkDeviceQueueCreateInfo queueCreateInfo{};
+		queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+		queueCreateInfo.queueFamilyIndex = indices.graphicsFamily.value();
+		queueCreateInfo.queueCount = 1;
+
+		float queuePriority = 1.0f;
+		queueCreateInfo.pQueuePriorities = &queuePriority;
+
+		VkPhysicalDeviceFeatures deviceFeatures{};
+
+		VkDeviceCreateInfo createInfo{};
+		createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+
+		createInfo.pQueueCreateInfos = &queueCreateInfo;
+		createInfo.queueCreateInfoCount = 1;
+
+		createInfo.pEnabledFeatures = &deviceFeatures;
+
+		createInfo.enabledExtensionCount = 0;
+
+		if (enableValidationLayers) {
+			createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
+			createInfo.ppEnabledExtensionNames = validationLayers.data();
+		}
+		else {
+			createInfo.enabledLayerCount = 0;
+		}
+
+		if (vkCreateDevice(physicalDevice, &createInfo, nullptr, &device) != VK_SUCCESS) {
+			throw std::runtime_error("failed to create logical device!");
+		}
+		// When you create a logical device, you specify the queue families and the number of queues you want to create for each family.
+		// After the logical device is created, you use vkGetDeviceQueue to get the handles to these queues. 
+		// These handles are then used to submit command buffers for execution.
+		vkGetDeviceQueue(device, indices.graphicsFamily.value(), 0, &graphicsQueue);
+	}
+	
 	bool isDeviceSuitable(VkPhysicalDevice device) {
 		QueueFamilyIndices indices = findQueueFamilies(device);
 		return indices.isComplete();
@@ -197,7 +253,8 @@ private:
 
 		uint32_t queueFamilyCount = 0;
 		vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
-
+		// VkQueueFamilyProperties is a structure that describes the properties of a queue family within a physical device. 
+		// Queue families are groups of queues that support similar types of operations, such as graphics, compute, or transfer.
 		std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
 		vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
 
