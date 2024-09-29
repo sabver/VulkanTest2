@@ -100,6 +100,7 @@ private:
 	VkExtent2D swapChainExtent;
 	std::vector<VkImageView> swapChainImageViews;
 
+	VkRenderPass renderPass;
 	VkPipelineLayout pipelineLayout;
 
 	void initWindow() {
@@ -119,6 +120,7 @@ private:
 		createLogicalDevice();
 		createSwapChain();
 		createImageViews();
+		createRenderPass();
 		createGraphicsPipeline();
 	}
 
@@ -130,6 +132,7 @@ private:
 
 	void cleanup() {
 		vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
+		vkDestroyRenderPass(device, renderPass, nullptr);
 		for (auto imageView: swapChainImageViews) {
 			vkDestroyImageView(device, imageView, nullptr);
 		}
@@ -375,6 +378,64 @@ private:
 				throw std::runtime_error("failed to create image views!");
 			}
 		}
+	}
+
+	void createRenderPass() {
+		// VkAttachmentReference is a structure in Vulkan that specifies an attachment and its layout in a subpass
+		VkAttachmentReference colorAttachmentRef{};
+		// This is an integer value that identifies an attachment at the corresponding index in VkRenderPassCreateInfo::pAttachments. 
+		// If the attachment is not used, this value is set to VK_ATTACHMENT_UNUSED
+		colorAttachmentRef.attachment = 0;
+		// This specifies the layout that the attachment uses during the subpass
+		colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+		VkSubpassDescription subpass{};
+		// structure specifies the type of pipeline that will be bound for the subpass
+		// VK_PIPELINE_BIND_POINT_GRAPHICS: Indicates that the subpass will use a graphics pipeline
+		// VK_PIPELINE_BIND_POINT_COMPUTE: Indicates that the subpass will use a compute pipeline
+		// a compute pipeline is used to manage and execute compute shaders, which are programs that run on the GPU to perform general-purpose computing tasks
+		// compute pipelines are optimized for tasks such as physics simulations, image processing, and other parallel computations
+		subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+		subpass.colorAttachmentCount = 1;
+		subpass.pColorAttachments = &colorAttachmentRef;
+
+		// The VkAttachmentDescription structure in Vulkan is used to describe an attachment in a render pass
+		VkAttachmentDescription colorAttachment{};
+		colorAttachment.format = swapChainImageFormat;
+		colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+		// Specifies how the contents of color and depth components are treated at the beginning of the subpass
+		// VK_ATTACHMENT_LOAD_OP_LOAD: Preserve the existing contents of the attachment
+		// VK_ATTACHMENT_LOAD_OP_CLEAR: Clear the values to a constant at the start
+		// VK_ATTACHMENT_LOAD_OP_DONT_CARE : Existing contents are undefined; we don't care about them
+		colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+		// Specifies how the contents of color and depth components are treated at the end of the subpass
+		// VK_ATTACHMENT_STORE_OP_STORE: Rendered contents will be stored in memory and can be read later
+		// VK_ATTACHMENT_STORE_OP_DONT_CARE: Contents of the framebuffer will be undefined after the rendering operation
+		colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+		// Specifies how the contents of stencil components are treated at the beginning of the subpass
+		colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+		// Specifies how the contents of stencil components are treated at the end of the subpass
+		colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+		// The layout of the attachment image subresource when a render pass instance begins
+		// don't care what previous layout the image was in
+		colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		// The layout of the attachment image subresource when a render pass instance ends
+		// VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL: Images used as color attachment
+		// VK_IMAGE_LAYOUT_PRESENT_SRC_KHR: Images to be presented in the swap chain
+		// VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL : Images to be used as destination for a memory copy operation
+		colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+		VkRenderPassCreateInfo renderPassInfo{};
+		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+		renderPassInfo.attachmentCount = 1;
+		renderPassInfo.pAttachments = &colorAttachment;
+		renderPassInfo.subpassCount = 1;
+		renderPassInfo.pSubpasses = &subpass;
+
+		if (vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass) != VK_SUCCESS ) {
+			throw std::runtime_error("failed to create render pass!");
+		}
+
 	}
 
 	void createGraphicsPipeline() {
